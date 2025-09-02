@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-profiler-drift-detector"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+dprof = "dpdd.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D", "ANN401", "TD002", "TD003", "S101"]
+
+[tool.mypy]
+strict = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "--tb=short -q"
