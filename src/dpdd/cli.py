@@ -2,8 +2,11 @@ import typer
 from typing import Annotated, Optional
 from pathlib import Path
 import uuid
+import sys
 
-from dataclasses import dataclass
+
+from dpdd.profiler import run_profile, ProfileArgs
+from dpdd.log_json import get_json_logger, make_emit
 
 
 app = typer.Typer(add_completion=False, rich_markup_mode="markdown")
@@ -12,16 +15,6 @@ app = typer.Typer(add_completion=False, rich_markup_mode="markdown")
 class UXError(Exception):
     """User input error (arguments validation, UX)."""
     pass
-
-
-@dataclass
-class ProfileArgs:
-    src: Path
-    dst: Path
-    fmt: str | None
-    sample: float
-    chunksize: int
-    topk: int
 
 
 def dir_get_suffix(src: Path) -> set[str]:
@@ -45,7 +38,7 @@ def detect_format(src: Path, fmt: str | None) -> str:
         raise UXError(f"ERR: src not found - {src}")
 
 
-def validate_profile_args(args: ProfileArgs) -> None:
+def validate_profile_args(args: ProfileArgs) -> str:
     if not args.src.exists():
         raise UXError(f"ERR: src not found")
 
@@ -76,6 +69,11 @@ def validate_profile_args(args: ProfileArgs) -> None:
     if args.topk <= 0:
         raise UXError(f"ERR: topk must be >0")
 
+    if args.threshold <= 0 or args.threshold > 1:
+        raise UXError(f"ERR: threshold must be >0 and <=1")
+
+    return fmt
+
 @app.command(name="profile")
 def profile(
     src: Path = typer.Option(..., "--src", help="input file or directory"),
@@ -84,14 +82,23 @@ def profile(
     sample: float = typer.Option(1.0, "--sample", help="(0;1]"),
     chunksize: int = typer.Option(10_000, "--chunksize", help="rows per chunk/batch"),
     topk: int = typer.Option(20, "--topk", help="top-K frequent values"),
+    threshold: float = typer.Option(0.95, "--threshold", help="coercion threshold"),
 ) -> None:
-    args = ProfileArgs(src=src, dst=dst, fmt=fmt, sample=sample, chunksize=chunksize, topk=topk)
+    args = ProfileArgs(src=src, dst=dst, fmt=fmt,
+                       sample=sample, chunksize=chunksize,
+                       topk=topk, threshold=threshold)
     try:
-        validate_profile_args(args)
+        args.fmt = validate_profile_args(args)
     except UXError as e:
         typer.secho(f"Error: {e}", err=True)
         raise typer.Exit(2)
-    pass
+
+    run_id = str(uuid.uuid4())
+    logger = get_json_logger("app")
+    emit = make_emit(logger, run_id, "profile")
+
+    sys.exit(run_profile(args, emit))
+
 
 def main() -> None:
     app()

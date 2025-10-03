@@ -24,3 +24,7 @@ build/
 
 # Project outputs
 .out/
+
+# Data used for testing
+data/
+logs/

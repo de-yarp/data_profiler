@@ -11,6 +11,9 @@ dependencies = []
 [project.scripts]
 dprof = "dpdd.cli:app"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
